@@ -9,6 +9,8 @@ import random
 parser=argparse.ArgumentParser()
 parser.add_argument("--dim", type=int, required=True)
 parser.add_argument("--npoints", type=int, required=True)
+parser.add_argument("--threshold", type=float, default=30.0)
+parser.add_argument("--libsvm", action="store_true", help="libsvm output format")
 args=parser.parse_args()
 
 # Generator for stream
@@ -67,6 +69,9 @@ class StreamSource:
 		# now the dimension is correct, return it
 		return self.current_point
 
+# check if any coordinate of the supplied point is greater than the given threshold
+def above_threshold(point,  threshold):
+	return filter(None, map(lambda _: _ > threshold, point))
 
 # -- start --
 # create the stream source
@@ -78,6 +83,15 @@ for _ in range(0,args.npoints):
 	# get the next generated point
 	point=source.get_next_point()
 
+	# get the class
+	class_ = -1 if above_threshold(point, args.threshold) else 1
+
 	# send to stdout
-	print(point)
+	if args.libsvm:
+		output = "%d " % class_
+		for index,value in enumerate(point):
+			output += "%d:%d " % (1 + index, value) 
+		print(output)
+	else:
+		print("point=%s => %d" % (point, class_))
 	

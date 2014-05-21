@@ -78,13 +78,18 @@ def above_threshold(point,  threshold):
 source=StreamSource(args.dim)
 
 # generate as many points as the user requests
+nclass1=0
 for _ in range(0,args.npoints):
 
 	# get the next generated point
 	point=source.get_next_point()
 
 	# get the class
-	class_ = -1 if above_threshold(point, args.threshold) else 1
+	if above_threshold(point, args.threshold):
+		class_ = -1
+		nclass1 += 1
+	else:
+		class_ = 1
 
 	# send to stdout
 	if args.libsvm:
@@ -95,3 +100,4 @@ for _ in range(0,args.npoints):
 	else:
 		print("point=%s => %d" % (point, class_))
 	
+sys.stderr.write("Class 1 = %d Class 2 = %d\n" % (nclass1, args.npoints - nclass1))

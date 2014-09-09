@@ -7,36 +7,57 @@ import numpy as np
 
 
 parser=argparse.ArgumentParser()
+parser.add_argument("--alpha", type=float, default=0.9, help="update weight for moving average")
+parser.add_argument("--beta", type=float, default=0.9, help="update weight for moving diff")
+parser.add_argument("--gamma", type=float, default=0.9, help="update weight for moving variance")
+parser.add_argument("--mean", type=float, default=10, help="initial mean for generated series")
+parser.add_argument("--sigma", type=float, default=1.0, help="initial std. dev. for generated series")
 args=parser.parse_args()
 
-mean=10.0
-sigma=1.0
+mean=args.mean
+sigma=args.sigma
 
-alpha=0.9
-mv_avg=mean + sigma * np.random.normal()
+alpha=args.alpha
+beta=args.beta
+gamma=args.gamma
 
-beta=0.8
-mv_var=0
+# reading 1
+o_val=mean + sigma * np.random.normal()
+mv_avg=o_val
+
+# reading 2
+o_val=mean + sigma * np.random.normal()
+mv_avg=alpha * mv_avg + (1-alpha) * o_val
+
+diff=o_val-mv_avg
+mv_diff=diff
+mv_var=diff * diff
 
 line_no=1
 
 while True:
 	
 	o_val=mean + sigma * np.random.normal()
-	
 	mv_avg=alpha * mv_avg + (1-alpha) * o_val
-	diff_sq=(o_val-mv_avg) ** 2
-	mv_var=beta * mv_var + (1-beta) * diff_sq
+
+	diff=o_val-mv_avg
+	mv_diff=beta*mv_diff + (1-beta) * diff
+
+	diff_sq=diff * diff
+	mv_var=gamma * mv_var + (1-gamma) * diff_sq
+	mv_sigma=np.sqrt(mv_var)
 	
-	print("%2d %7.1f %4.1f %7.3f %7.3f %4.1f %10.3f %5s" 
+	print("[%4d] mean=%4.1f  alpha=%3.1f  obs=%6.3f  diff=%7.3f  beta=%3.1f  mv_diff=%7.3f  gamma=%3.1f  mv_sigma=%6.3f %5s\t" 
 		% ( line_no,
 			mean, 
 			alpha, 
 			o_val, 
-			o_val - mv_avg, 
+			diff, 
 			beta,
-			np.sqrt(mv_var),
-			"X" if np.abs(o_val - mv_avg) > 1.1*np.sqrt(mv_var) else "")
+			mv_diff,
+			gamma,
+			mv_sigma,
+			"X" if np.abs(diff) > 2*mv_sigma else "")
 	),
 
 	inp=raw_input().strip().split()
@@ -46,7 +67,7 @@ while True:
 		if inp[0] == "m": mean=float(inp[1])
 		if inp[0] == "s": sigma=float(inp[1])
 		if inp[0] == "a": alpha=float(inp[1])
-		if inp[0] == "b": beta=float(inp[1])
+		if inp[0] == "b": gamma=float(inp[1])
 
 	line_no += 1
 

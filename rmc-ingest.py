@@ -1,26 +1,20 @@
-
-# coding: utf-8
-
-# In[1]:
-
 from bs4 import BeautifulSoup
 import datetime
 import os
+import shutil
+import zipfile
+import argparse
 
-
-# In[2]:
+parser=argparse.ArgumentParser()
+parser.add_argument('--base-dir', required=True)
+args=parser.parse_args()
 
 def get_ds_index(datasources):
     for idx,ds in enumerate(datasources):
         if ds.type and ds.type.contents[0].strip()==u'GAUGE':
             return idx
 
-
-# In[3]:
-
-def get_values(rras,ds_index):
-    timeseries=[]
-    valueseries=[]
+def send_values(rras,ds_index):
     for rra in rras:
         cf=rra.cf.contents[0].strip()
         pdp_per_row=int(rra.pdp_per_row.contents[0])
@@ -30,45 +24,42 @@ def get_values(rras,ds_index):
                 epoch_time = int(row.previous_sibling.previous_sibling.split('/')[1])
                 dt=datetime.datetime.fromtimestamp(epoch_time)
                 value=float(row.v.contents[ds_index])
-                timeseries.append(dt)
-                valueseries.append(value)
-    return (timeseries, valueseries)
+                print('send packet     t=%s     v=%f' % (dt.strftime('%Y-%m-%d %H:%M:%S'), value))
 
-
-# In[4]:
-
-def load_data(filename):
+def send_data(filename):
     inputfile = open(filename, "r")
     soup=BeautifulSoup(inputfile.read())
     ds_index=get_ds_index(soup.rrd.findAll('ds'))
-    return get_values(soup.rrd.findAll('rra'),ds_index)
+    send_values(soup.rrd.findAll('rra'),ds_index)
 
-
-# In[5]:
-
-def process_rrd_xmls(base_dir,xmlfiles):
+def get_rrd_xmls(base_dir):
     for ent in os.listdir(base_dir):
         entry='%s\\%s' % (base_dir, ent)
         if os.path.isdir(entry):
-            process_rrd_xmls(entry,xmlfiles)
+            get_rrd_xmls(entry)
         elif entry.endswith('.xml'):
-            xmlfiles.append(entry)
+            print(entry)
+            send_data(entry)
 
+def get_rrd_xmls_from_zipfiles(base_dir):
+    tempdir=base_dir+r'\.temp-extraction-point'
 
-# In[6]:
+    if os.path.exists(tempdir):
+        shutil.rmtree(tempdir)
+    os.mkdir(tempdir)
 
-xmlfiles=[]
-process_rrd_xmls(r'f:\time series data',xmlfiles)
+    for ent in os.listdir(base_dir):
+        if ent.endswith('.zip'):
+            entry=base_dir+'\\'+ent
+            print('processing %s' % entry)
+            zf=zipfile.ZipFile(entry)
+            zf.extractall(tempdir)
+            get_rrd_xmls(tempdir)
+            shutil.rmtree(tempdir)
+            os.mkdir(tempdir)
 
+    shutil.rmtree(tempdir)
 
-# In[7]:
-
-for ifile in xmlfiles:
-    (time_series,value_series)=load_data(ifile)
-    print('%d points from %s to %s' % (len(value_series), time_series[0].strftime('%Y-%m-%d %H:%M:%S'), time_series[-1].strftime('%Y-%m-%d %H:%M:%S')))
-
-
-# In[ ]:
-
-
-
+# -- start
+#get_rrd_xmls(args.base_dir)
+get_rrd_xmls_from_zipfiles(args.base_dir)

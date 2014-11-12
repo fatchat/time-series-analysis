@@ -3,7 +3,7 @@ library("e1071")
 # dataset1 <- maml.mapInputPort(1) # class: data.frame
 # training_data=array(data=dataset1, dim=c(5,2))
 
-training_data=array(data=c(10,9,9,10,11,10,11,11,9,10), dim=c(5,2))
+training_data=array(data=c(10,9,9,10,11,10,11,11,9,10), dim=c(2,5))
 model <- svm(training_data, 
 			factor(rep(1,dim(training_data)[1])), 
 			scale=TRUE, 
